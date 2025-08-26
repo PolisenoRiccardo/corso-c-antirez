@@ -36,7 +36,7 @@ char get_cell(char *grid, int x, int y) {
 
 // mostra la griglia sullo schermo
 void print_grid(char *grid) {
-   printf("\x1b[3J\x1b[H\x1b[2J");
+   printf("\x1b[3J\x1b[H\x1b[2J"); // clear
    for (int y = 0; y < GRID_ROWS; y++) {
       for (int x = 0; x < GRID_COLS; x++) {
          printf("%c", get_cell(grid, x, y));
@@ -97,6 +97,8 @@ int main(void) {
    set_cell(old_grid, 11, 10, ALIVE);
    set_cell(old_grid, 11, 9, ALIVE);
    set_cell(old_grid, 10, 8, ALIVE);
+
+   /* versione vecchia (ripete la computazione dello stato)
    while(1) {
       compute_new_state(old_grid, new_grid);
       print_grid(new_grid);
@@ -104,6 +106,17 @@ int main(void) {
       compute_new_state(new_grid, old_grid);
       print_grid(old_grid);
       usleep(100000);
+   } */
+   char *new = new_grid;
+   char *old = old_grid;
+   while(1) {
+      compute_new_state(old, new);
+      print_grid(new);
+      usleep(100000);
+      char *tmp = old;
+      old = new;
+      new = tmp;
    }
    return 0;
+
 }
