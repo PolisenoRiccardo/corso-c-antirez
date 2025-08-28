@@ -7,7 +7,9 @@
  * in 'init' della lunghezza 'len'
  */
 char *ps_create(char *init, int len) {
-   char *s = malloc(4+len+1);
+   char *s = malloc(4+len+1); // 4 string lenght bytes
+                              // len string bytes
+                              // 1 terminator byte
    uint32_t *lenptr = (uint32_t*)s;
    *lenptr = len;
    
