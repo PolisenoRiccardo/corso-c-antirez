@@ -1,5 +1,8 @@
 #include <ctype.h>
 #include <stdio.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <errno.h>
 
 #define HEXDUMP_CHARS_PER_LINE 16
 void hexdump(void *p, size_t len) { // void pointer devastante, del tipo "A cosa punti?", "Punto." 
@@ -28,17 +31,29 @@ void hexdump(void *p, size_t len) { // void pointer devastante, del tipo "A cosa
 }
 
 int main(void) {
-  FILE *fp = fopen("stdio1.c", "r"); // r = legge il file una volta
-  if (fp == NULL) {
-    printf("Unable to open file\n");
+  // fd: file descriptor 
+  // open è una chiamata di sistema diretta (fopen utilizza open, è un wrapper)
+  int fd = open("stdio1_system_calls.c", O_RDONLY); 
+  // se open restituisce -1 significa errore
+  if (fd == -1) {
+    // perror aggiunge alla stringa il testo corrispondente al tipo di errore
+    perror("Unable to open file");
     return 1;
   }
+  
   char buf[32];
-  size_t nread;
+  // size_t ma signed, perché read può restituire -1 (devo chiarire perché non ho capito)
+  ssize_t nread;
   while (1) {
-    nread = fread(buf, 1, sizeof(buf), fp);
+    // read differisce da fread nell'ordine degli argomenti
+    // non richiede la lunghezza (anche qui non so esattamente di cosa sto parlando)
+    nread = read(fd, buf, sizeof(buf)); 
     if (nread == 0) break;
     hexdump(buf, nread);
   }
-  fclose(fp); // necessario per evitare il memory leak
+  
+  // anche close è una chiamata di sistema, non legata ad open
+  // close è generico, infatti è nella libreria unistd.h
+  close(fd);
+  return 0;
 }
