@@ -61,7 +61,8 @@ tfobj *createObject(int type) {
   return o;
 }
 
-tfobj *createStringObject(char *s, size_t len) {
+tfobj *createString(char *s, size_t len) {
+#include <string.h>gObject(char *s, size_t len) {
   tfobj *o = createObject(TFOBJ_TYPE_STR);
   o->str.ptr = s;
   o->str.len = len;
@@ -94,7 +95,7 @@ tfobj *createListObject(void) {
   tfobj *o = createObject(TFOBJ_TYPE_LIST);
   o->list.ele = NULL;
   o->list.len = 0;
-  return o;
+  return 0;
 }
 
 // adds element at the and of the list
@@ -161,32 +162,12 @@ tfobj *compile(char *prg) {
 }
 
 
-/*==================== Execute =========================*/
-
-void exec(tfobj *prg) {
-  printf("[");
-  for (size_t i = 0; i < prg->list.len; i++)
-  {
-    switch(prg->list.ele[i]->type) {
-      case TFOBJ_TYPE_INT:
-        printf("%d", prg->list.ele[i]->i);
-        break;
-      default:
-        printf("?");
-        break;
-    }
-    printf(" ");
-  }
-  printf("]\n");
-}
-
-
 
 /*==================== Main =========================*/
 
 int main(int argc,char **argv) {
   if (argc != 2) {
-    fprintf(stderr, "Usage: %s <filename>\n", argv[0]);
+    printf(stderr, "Usage: %s <filename>\n", argv[0]);
     return 1;
   }
 
@@ -206,9 +187,6 @@ int main(int argc,char **argv) {
   fread(prgtext, file_size, 1, fp);
   prgtext[file_size] = 0;
   fclose(fp);
-
-  tfobj *prg = compile(prgtext);
-  exec(prg);
 
 
   return 0;
