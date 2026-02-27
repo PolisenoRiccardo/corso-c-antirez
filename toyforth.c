@@ -63,8 +63,10 @@ tfobj *createObject(int type) {
 
 tfobj *createStringObject(char *s, size_t len) {
   tfobj *o = createObject(TFOBJ_TYPE_STR);
-  o->str.ptr = s;
+  o->str.ptr = xmalloc(len+1);
   o->str.len = len;
+  memcpy(o->str.ptr, s, len);
+  o->str.ptr[len] = 0;
   return o;
 }
 
@@ -73,7 +75,6 @@ tfobj *createSymbolObject(char *s, size_t len) {
   o->type = TFOBJ_TYPE_SYMBOL;
   return o;
 }
-
 
 tfobj *createIntObject(int i) {
   tfobj *o = createObject(TFOBJ_TYPE_INT);
@@ -86,7 +87,6 @@ tfobj *createBoolObject(int i) {
   o->i = i;
   return o;
 }
-
 
 /* ================ List object ================ */
 
@@ -125,6 +125,26 @@ tfobj *parseNumber(tfparser *parser) {
   return o;
 }
 
+// Returns true if "c" is an acceptable symbol
+int is_symbol_char(int c) {
+    char symchars[] = "+-*/%";
+    // chad return isalpha(c) || strchr(symchars,c) != NULL;
+    if (isalpha(c))  { 
+      return 1;
+    } else if (strchr(symchars,c) != NULL) {
+      return 1; 
+    } else {
+      return 0;
+    }
+}
+
+tfobj *parseSymbol(tfparser *parser) {
+    char *start = parser->p;
+    while (parser->p[0] && is_symbol_char(parser->p[0])) parser->p++;
+    int len = parser->p - start;
+    return createSymbolObject(start, len);
+}
+
 void parseSpaces(tfparser *parser) {
   while (isspace(parser->p[0])) parser->p++;
 }
@@ -142,8 +162,10 @@ tfobj *compile(char *prg) {
 
     parseSpaces(&parser);
     if (parser.p[0] == 0) break; // end
-    if (isdigit(parser.p[0]) || parser.p[0] == '-') {
+    if (isdigit(parser.p[0]) || (parser.p[0] == '-' && isdigit(parser.p[1]))) {
       o = parseNumber(&parser);
+    } else if (is_symbol_char(parser.p[0])) {
+      o = parseSymbol(&parser);
     } else {
       o = NULL;
     }
@@ -163,21 +185,27 @@ tfobj *compile(char *prg) {
 
 /*==================== Execute =========================*/
 
-void exec(tfobj *prg) {
-  printf("[");
-  for (size_t i = 0; i < prg->list.len; i++)
-  {
-    switch(prg->list.ele[i]->type) {
-      case TFOBJ_TYPE_INT:
-        printf("%d", prg->list.ele[i]->i);
-        break;
-      default:
-        printf("?");
-        break;
-    }
-    printf(" ");
+void print_object(tfobj *o) {
+  switch (o->type) {
+  case TFOBJ_TYPE_INT:
+    printf("%d", o->i);
+    break;
+  case TFOBJ_TYPE_LIST:
+    printf("[");
+    for (size_t i = 0; i < o->list.len; i++)
+    {
+        tfobj *ele = o->list.ele[i];
+        print_object(ele);
+        printf(" ");
+    } 
+    printf("]\n");
+    break;
+  case TFOBJ_TYPE_SYMBOL:
+    printf("%s", o->str.ptr);
+    break;
+  default:
+    printf("?");
   }
-  printf("]\n");
 }
 
 
@@ -208,8 +236,7 @@ int main(int argc,char **argv) {
   fclose(fp);
 
   tfobj *prg = compile(prgtext);
-  exec(prg);
-
+  print_object(prg);
 
   return 0;
 }
