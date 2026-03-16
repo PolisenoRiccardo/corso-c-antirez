@@ -3,7 +3,6 @@
 #include <unistd.h>
 #include <ctype.h>
 #include <string.h>
-#include <assert.h>
 
 /* Data structures */
 
@@ -39,23 +38,7 @@ typedef struct tfparser {
 
 typedef struct tfctx {
   tfobj *stack;
-  struct FunctionTable functable;
 } tfctx;
-
-/* Function table entry: each of this entry represents a symbol name 
- * associated with a function implementation */
-struct FunctionTableEntry {
-  tfobj *name;
-  void (*callback) (tfctx *ctx, tfobj *name);
-  tfobj *user_list;
-};
-
-
-struct FunctionTable {
-  struct FunctionTableEntry **func_table;
-  size_t func_count;
-};
-
 
 /* ----------- Allocation Wrappers ----------------- */
 
@@ -112,66 +95,6 @@ tfobj *createBoolObject(int i) {
   tfobj *o = createObject(TFOBJ_TYPE_BOOL);
   o->i = i;
   return o;
-}
-
-void retain(tfobj *o) {
-  o->refcount++;
-}
-
-void free_object(tfobj*);
-
-void release(tfobj *o) {
-  assert(o->refcount > 0);
-  o->refcount--;
-  if (o->refcount == 0) free_object(o);
-}
-
-void free_object(tfobj *o) {
-  switch (o->type) {
-  case TFOBJ_TYPE_LIST:
-    for (size_t i = 0; i < o->list.len; i++)
-    {
-        tfobj *ele = o->list.ele[i];
-        release(ele); // non free
-    } 
-    break;
-  case TFOBJ_TYPE_SYMBOL:
-  case TFOBJ_TYPE_STR:
-    free(o->str.ptr);
-    break;
-  default:
-    break;
-  }
-  free(o);
-}
-
-
-void print_object(tfobj *o) {
-  switch (o->type) {
-  case TFOBJ_TYPE_INT:
-    printf("%d", o->i);
-    break;
-  case TFOBJ_TYPE_LIST:
-    printf("[");
-    for (size_t i = 0; i < o->list.len; i++)
-    {
-        tfobj *ele = o->list.ele[i];
-        print_object(ele);
-        if (i != o->list.len-1) 
-          printf(" ");
-    } 
-    printf("]\n");
-    break;
-  case TFOBJ_TYPE_STR:
-    printf("\"%s\"", o->str.ptr);
-    break;
-  case TFOBJ_TYPE_SYMBOL:
-    printf("%s", o->str.ptr);
-    break;
-  default:
-    printf("?");
-    break;
-  }
 }
 
 /* ================ List object ================ */
@@ -258,7 +181,6 @@ tfobj *compile(char *prg) {
 
     // Check error
     if (o == NULL) {
-      release(&parser);
       printf("Syntax error near: %32s ...\n", token_start);
       return NULL;
     } else {
@@ -270,39 +192,56 @@ tfobj *compile(char *prg) {
 }
 
 
+/*==================== Execute =========================*/
+
+void print_object(tfobj *o) {
+  switch (o->type) {
+  case TFOBJ_TYPE_INT:
+    printf("%d", o->i);
+    break;
+  case TFOBJ_TYPE_LIST:
+    printf("[");
+    for (size_t i = 0; i < o->list.len; i++)
+    {
+        tfobj *ele = o->list.ele[i];
+        print_object(ele);
+        if (i != o->list.len-1) 
+          printf(" ");
+    } 
+    printf("]\n");
+    break;
+  case TFOBJ_TYPE_SYMBOL:
+    printf("%s", o->str.ptr);
+    break;
+  default:
+    printf("?");
+    break;
+  }
+}
 
 /*==================== Execution and context =========================*/
-
 
 tfctx *create_context(void) {
   tfctx *ctx = xmalloc(sizeof(*ctx));
   ctx->stack = createListObject();
-  ctx->functable.func_table = NULL;
-  ctx->functable.func_count = 0;
   return ctx;
-}
-
-
-/* Return 0 if the symbol was bound to some function, return 1 otherwise */
-void call_symbol(tfctx *ctx, tfobj *word) {
-  
 }
 
 void exec(tfctx *ctx, tfobj *prg) {
   assert(prg->type == TFOBJ_TYPE_LIST);
-  for (size_t i = 0; i < prg->list.len; i++) {
+  for (size_t i = 0; i < o->list.len; i++) {
     tfobj *word = prg->list.ele[i];
     switch (word->type) {
     case TFOBJ_TYPE_SYMBOL:
-        call_symbol(ctx, word);
       break;
-    default:
+    defualt:
       listPush(ctx->stack, word);
-      retain(word);
       break;
     }
   } 
 }
+
+
 
 /*==================== Main =========================*/
 
@@ -331,9 +270,11 @@ int main(int argc,char **argv) {
 
   tfobj *prg = compile(prgtext);
   print_object(prg);
-  tfctx *ctx = create_context();
+  printf("\n");
+  tfctx *ctx = createContext();
   exec(ctx, prg);
   printf("Stack content at end: ");
   print_object(ctx->stack);
+  printf("\n");
   return 0;
 }
