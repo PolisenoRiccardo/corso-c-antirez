@@ -441,8 +441,12 @@ int exec(tfctx *ctx, tfobj *prg) {
 int basicMathFunctions(tfctx *ctx, char *name) {
   if (ctxCheckStackMinLen(ctx, 2) == 1) return TF_ERR;
   tfobj *b = ctxStackPop(ctx, TFOBJ_TYPE_INT);
+  if (b==NULL) return TF_ERR;
   tfobj *a = ctxStackPop(ctx, TFOBJ_TYPE_INT);
-  if (a == NULL || b == NULL) return TF_ERR;
+  if (a == NULL) {
+    ctxStackPush(ctx, b);
+    return TF_ERR;
+  }
   int result;
   switch (name[0]) {
     case '+': result = a->i + b->i; break;
@@ -450,7 +454,8 @@ int basicMathFunctions(tfctx *ctx, char *name) {
     case '*': result = a->i * b->i; break;
     default:  return TF_ERR;
   }
-
+  release(a);
+  release(b);
   ctxStackPush(ctx,createIntObject(result));
   return TF_OK;
 }
@@ -464,7 +469,7 @@ int main(int argc,char **argv) {
 
   /* Read the program in memory for parsing */
 
-  FILE *fp = fopen(argv[1], "r");
+  FILE *fp = fopen(argv[1], "rb");
   if (fp == NULL) {
     perror("Opening  Toy Forth program.");
     return 1;
@@ -475,8 +480,9 @@ int main(int argc,char **argv) {
   
   fseek(fp, 0, SEEK_SET);
   char* prgtext = xmalloc(file_size+1);
-  fread(prgtext, file_size, 1, fp);
-  prgtext[file_size] = 0;
+  
+  size_t nread = fread(prgtext, 1, file_size, fp);
+  prgtext[nread] = 0;
   fclose(fp);
 
   tfobj *prg = compile(prgtext);
